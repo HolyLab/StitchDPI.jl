@@ -1,1 +1,9 @@
 julia 0.6
+CoordinateTransformations
+Interpolations
+PaddedViews
+Unitful
+AxisArrays
+Images
+MappedArrays
+BlockRegistration
