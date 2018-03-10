@@ -131,7 +131,7 @@ function stitch_tfm(img1_full, img2_full, img1_roi, img2_roi; kwargs...)
     img2_post_tfm, post_mm = qd_rigid(img1_full, img2_roi_pad, mxshift_xcam, [pi/10], [pi/10000]; tfm0= post_tfm_guess, thresh=0.4*sum(abs2.(img2_roi_pad[.!(isnan.(img2_roi_pad))])), kwargs...)
     mxshift_img1 = [100;100]
     print("Registering the img1 full image to the img1 strip\n")
-    img1_self_tfm, mm_self1 = qd_rigid(img1_roi_pad, img1_full, mxshift_img1, [pi/2000], [pi/1000]; thresh=0.4*sum(abs2.(img2_roi_pad[.!(isnan.(img2_roi_pad))])), kwargs...)
+    img1_self_tfm, mm_self1 = qd_rigid(img1_roi_pad, img1_full, mxshift_img1, [pi/2000], [pi/1000]; thresh=0.4*sum(abs2.(img1_roi_pad[.!(isnan.(img1_roi_pad))])), kwargs...)
     return img1_self_tfm ∘ img2_post_tfm
 end
 
