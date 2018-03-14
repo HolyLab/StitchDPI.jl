@@ -8,6 +8,7 @@ mutable struct StitchedSeries{TO,TI} <: AbstractArray{TO,4}
     cache_tidx::Int
     correct_bias::Bool
     sqrt_tfm::Bool
+    flipy_bottom::Bool
 end
 
 correctbias(pix::Normed{UInt16, 16}, bias=100/2^16) = Normed{UInt16,16}(max(0.0, pix-bias))
@@ -15,7 +16,7 @@ correctbias(img::AbstractArray{Normed{UInt16, 16}, N}, bias=100/2^16) where {N} 
 
 sqrtimg(img::AbstractArray{T,N}) where {T,N} = mappedarray(x->sqrt(x), img)
 
-function StitchedSeries(img_top::AbstractArray{T,4}, img_bottom::AbstractArray{T,4}, tfm, out_type=Float64; correct_bias=true, sqrt_tfm=false) where {T}
+function StitchedSeries(img_top::AbstractArray{T,4}, img_bottom::AbstractArray{T,4}, tfm, out_type=Float64; correct_bias=true, sqrt_tfm=false, flipy_bottom=true) where {T}
     szt, szb = size(img_top), size(img_bottom)
     for i =1:4
         if szt[i] != szb[i]
@@ -23,8 +24,12 @@ function StitchedSeries(img_top::AbstractArray{T,4}, img_bottom::AbstractArray{T
         end
     end
     #do a trial transform to get the y size
-    temp = stitch(view(img_top,:, :, 1, 1), view(img_bottom,:,:,1,1), tfm, out_type)
-    StitchedSeries{out_type, T}(img_top, img_bottom, tfm, size(temp,2), temp, 1, 1, correct_bias, sqrt_tfm)
+    temp = stitch(view(img_top,:, :, 1, 2), view(img_bottom,:,:,1,2), tfm, out_type; flip_y_img2=flipy_bottom)
+    ss = StitchedSeries{out_type, T}(img_top, img_bottom, tfm, size(temp,2), temp, 1, 2, correct_bias, sqrt_tfm, flipy_bottom)
+    temp = ss[:,:,1,1]; #to update cached slice
+    #ss.cached = ss[:,:,1,1]; #Not sure why the assignment is necessary
+    #ss.cache_tidx = ss.cache_zidx = 1
+    return ss
 end
 
 size(A::StitchedSeries{T}) where {T} = (size(A.img_top,1), A.y_sz, size(A.img_top,3), size(A.img_top,4))
@@ -48,9 +53,9 @@ getindex(A::StitchedSeries, dim1::Int, dim2::Int, otherdims...) = slow_getindex(
 function getindex(A::StitchedSeries{T}, dim1::Union{UnitRange, Colon}, dim2::Union{UnitRange,Colon}, dim3::Int, dim4::Int) where {T}
     if A.cache_zidx != dim3 || A.cache_tidx != dim4
         if A.correct_bias
-            A.cached = stitch(correctbias(view(A.img_top, dim1, dim2, dim3, dim4)), correctbias(view(A.img_bottom,dim1,dim2,dim3,dim4)), A.tfm, T)
+            A.cached = stitch(correctbias(view(A.img_top, dim1, dim2, dim3, dim4)), correctbias(view(A.img_bottom,dim1,dim2,dim3,dim4)), A.tfm, T; flip_y_img2=A.flipy_bottom)
         else
-            A.cached = stitch(view(A.img_top, dim1, dim2, dim3, dim4), view(A.img_bottom,dim1,dim2,dim3,dim4), A.tfm, T)
+            A.cached = stitch(view(A.img_top, dim1, dim2, dim3, dim4), view(A.img_bottom,dim1,dim2,dim3,dim4), A.tfm, T; flip_y_img2=A.flipy_bottom)
         end
         if A.sqrt_tfm
             A.cached = sqrt.(A.cached)
@@ -58,7 +63,7 @@ function getindex(A::StitchedSeries{T}, dim1::Union{UnitRange, Colon}, dim2::Uni
         A.cache_zidx = dim3
         A.cache_tidx = dim4
     end
-    return A.cached
+    return A.cached[dim1,dim2]
 end
 
 _idxs(A, dim, idxs) = idxs
