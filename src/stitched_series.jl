@@ -6,13 +6,16 @@ mutable struct StitchedSeries{TO,TI} <: AbstractArray{TO,4}
     cached::AbstractArray{TO,2}
     cache_zidx::Int
     cache_tidx::Int
+    correct_bias::Bool
+    sqrt_tfm::Bool
 end
 
-correctbias(img::AbstractArray{Normed{UInt16, 16}, N}, bias=100/2^16) where {N} = mappedarray(x->Normed{UInt16,16}(max(0.0, x-bias)), img)
+correctbias(pix::Normed{UInt16, 16}, bias=100/2^16) = Normed{UInt16,16}(max(0.0, pix-bias))
+correctbias(img::AbstractArray{Normed{UInt16, 16}, N}, bias=100/2^16) where {N} = mappedarray(x->correctbias(x), img)
 
-function StitchedSeries(img_top::AbstractArray{T,4}, img_bottom::AbstractArray{T,4}, tfm, out_type=Float64) where {T}
-    img_top = correctbias(img_top)
-    img_bottom = correctbias(img_bottom)
+sqrtimg(img::AbstractArray{T,N}) where {T,N} = mappedarray(x->sqrt(x), img)
+
+function StitchedSeries(img_top::AbstractArray{T,4}, img_bottom::AbstractArray{T,4}, tfm, out_type=Float64; correct_bias=true, sqrt_tfm=false) where {T}
     szt, szb = size(img_top), size(img_bottom)
     for i =1:4
         if szt[i] != szb[i]
@@ -21,7 +24,7 @@ function StitchedSeries(img_top::AbstractArray{T,4}, img_bottom::AbstractArray{T
     end
     #do a trial transform to get the y size
     temp = stitch(view(img_top,:, :, 1, 1), view(img_bottom,:,:,1,1), tfm, out_type)
-    StitchedSeries{out_type, T}(img_top, img_bottom, tfm, size(temp,2), temp, 1, 1)
+    StitchedSeries{out_type, T}(img_top, img_bottom, tfm, size(temp,2), temp, 1, 1, correct_bias, sqrt_tfm)
 end
 
 size(A::StitchedSeries{T}) where {T} = (size(A.img_top,1), A.y_sz, size(A.img_top,3), size(A.img_top,4))
@@ -34,7 +37,6 @@ Base.IndexStyle(::Type{<:StitchedSeries}) = IndexCartesian()
 #idx_warn() = warn("Iterating through a StitchedSeries this way is very inefficient.  Query an entire frame (Colons in dims 1 and 2) instead")
 
 function slow_getindex(A::StitchedSeries, I)
-    #idx_warn()
     sl = A[:,:,I[3], I[4]]
     return sl[I[1],I[2]]
 end
@@ -45,7 +47,14 @@ getindex(A::StitchedSeries, dim1::Int, dim2::Int, otherdims...) = slow_getindex(
 
 function getindex(A::StitchedSeries{T}, dim1::Union{UnitRange, Colon}, dim2::Union{UnitRange,Colon}, dim3::Int, dim4::Int) where {T}
     if A.cache_zidx != dim3 || A.cache_tidx != dim4
-        A.cached = stitch(view(A.img_top, dim1, dim2, dim3, dim4), view(A.img_bottom,dim1,dim2,dim3,dim4), A.tfm, T)
+        if A.correct_bias
+            A.cached = stitch(correctbias(view(A.img_top, dim1, dim2, dim3, dim4)), correctbias(view(A.img_bottom,dim1,dim2,dim3,dim4)), A.tfm, T)
+        else
+            A.cached = stitch(view(A.img_top, dim1, dim2, dim3, dim4), view(A.img_bottom,dim1,dim2,dim3,dim4), A.tfm, T)
+        end
+        if A.sqrt_tfm
+            A.cached = sqrt.(A.cached)
+        end
         A.cache_zidx = dim3
         A.cache_tidx = dim4
     end
@@ -87,6 +96,6 @@ function match_axisspacing(B::AbstractArray{T,N}, A::AxisArray{T2,N}) where {T,T
     return AxisArray(B, newaxs...)
 end
 
-StitchedSeries(img_top::ImageMeta, img_bottom::ImageMeta, tfm, out_type=Float64) = ImageMeta(StitchedSeries(data(img_top), data(img_bottom), tfm, out_type), properties(img_top))
-StitchedSeries(img_top::AxisArray{T,4}, img_bottom::AxisArray{T,4}, tfm, out_type=Float64) where {T} = match_axisspacing(StitchedSeries(data(img_top),data(img_bottom),tfm,out_type), img_top)
+StitchedSeries(img_top::ImageMeta, img_bottom::ImageMeta, tfm, out_type=Float64; kwargs...) = ImageMeta(StitchedSeries(data(img_top), data(img_bottom), tfm, out_type; kwargs...), properties(img_top))
+StitchedSeries(img_top::AxisArray{T,4}, img_bottom::AxisArray{T,4}, tfm, out_type=Float64; kwargs...) where {T} = match_axisspacing(StitchedSeries(data(img_top),data(img_bottom),tfm,out_type; kwargs...), img_top)
 

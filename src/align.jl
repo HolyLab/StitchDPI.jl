@@ -1,24 +1,25 @@
 #shared image alignment procedure on the microscope
 #1. Install KEM.  Make sure the KEM is positioned so that the image stays crisp on camera2 (may want to compare with a dichroic to make sure)
 #2. Set camera ROIs as desired (same size for both cameras)
-#3. Move camera1 up so that the KEM line corresponds with the bottom side of the ROI (smaller ROIs will require moving the camera farther)
+#3. Move camera1 up so that the KEM line corresponds with the bottom side of the ROI (larger ROIs will require moving the camera farther)
 #4. Move camera2 left so that the KEM line corresponds with the bottom side of the ROI
 #5. Note the ROI settings and change the ROI to full chip temporarily
 #6. Install 50/50 dichroic instead of KEM
 #7. Take a snapshot of beads with both cameras
-#8. Reset ROI settings, replace KEM mirror, and take another pair of snapshots
+#8. Reset ROI settings, replace KEM mirror, and take another pair of snapshots.  Make sure the beads don't move during this sequence!
 
 #shared image alignment computational procedure
 #1.  Compute transform to align camera2's flipped padded half-image (step 8) with its flipped full image (step 7) (should be almost perfect already)
 #2.  Compute transform to align camera2's flipped full image (step 7) with camera1's full image (step 7) (will require a downward shift roughly equal to ROI ysz)
-#3.  For each camera2 half-image:
+#3.  Compute transform to align camera1's full image (step 7) with camera1's padded half-image image (step 8)
+#4.  For each camera2 half-image:
     # -flip y
     # -pad vertically to full chip size
     # -apply transform from #1 
     # -apply transform from #2
+    # -apply transform from #3 (Actually all 3 transforms should be composed into one and applied just once)
     # -nansum with camera1's corresponding padded half-image
     # -find minimal bounding box that contains all non-nan pixels and return image cropped to that region
-#***the above is somewhat inefficient due to all the padding, could be improved.
 
 function ypad(img, padded_size::Int; flip_y = true, fillval = eltype(img)(NaN), pad_side=:both)
     @assert ndims(img) == 2
