@@ -21,27 +21,6 @@
     # -nansum with camera1's corresponding padded half-image
     # -find minimal bounding box that contains all non-nan pixels and return image cropped to that region
 
-function ypad(img, padded_size::Int; flip_y = true, fillval = eltype(img)(NaN), pad_side=:both)
-    @assert ndims(img) == 2
-    @assert padded_size >= size(img,2)
-    @assert iseven(padded_size - size(img,2))
-    npix = div(padded_size - size(img,2), 2)
-    if flip_y
-        img = flipy(img)
-    end
-    first_idx = (1,1)
-    if pad_side == :both
-        first_idx = (1,npix+1)
-    elseif pad_side == :top
-        first_idx = (1,2*npix+1)
-    elseif pad_side != :bottom
-        error("Unrecognized padding argument $pad_side")
-    end
-    return PaddedView(fillval, img, (size(img,1),size(img,2)+2*npix), first_idx) # (2, 2) is the location of the first element from a
-end
-
-flipy(img::AbstractArray{T,2}) where {T} = view(img, :, reverse(last(indices(img))))
-
 #By convention, we align images to camera1, which has the top portion of the split image on OCPI2
 #This returns an initial guess translation mapping camera 2's image to camera1's image after camera2's image has been flipped (flip required on OCPI2)
 #ysz_roi is the pixel size of the image in the vertical direction (the dimension that gets split between cameras)
@@ -53,41 +32,6 @@ function initial_share_tfm(ysz_chip::Int, ysz_roi::Int)
     end
     return Translation(0, -ysz_roi)
 end
-
-function crop_vals(img::AbstractArray{T,2}, val) where {T}
-    xmax = ymax = 1
-    xmin = size(img,1)
-    ymin = size(img,2)
-    for y = 1:size(img,2)
-        for x = 1:size(img,1)
-            if !isequal(img[x,y], val)
-                xmin = min(x,xmin)
-                xmax = max(x,xmax)
-                ymin = min(y,ymin)
-                ymax = max(y,ymax)
-            end
-        end
-    end
-    if xmax < xmin || ymax < ymin
-        error("All elements of image seem to be $val")
-    end
-    return view(img, xmin:xmax, ymin:ymax)
-end
-
-function nanplus!(prealloc, img1, img2)
-    for i in eachindex(img1)
-        val1 = img1[i]
-        val2 = img2[i]
-        if isnan(val1) || isnan(val2)
-            prealloc[i] = isnan(val1) ? val2 : val1
-        else
-            prealloc[i] = val1 + val2
-        end
-    end
-    return prealloc
-end
-
-nanplus(img1, img2) = nanplus!(similar(img1), img1, img2)
 
 #Stitches img1 and img2 using a tranformation tfm that, when applied to img2, aligns it with img1.  Since img1 and img2 are expected to have little-to-no overlap
 #they are padded before applying the transformation.  The transformed img2 is added to img1 and the interesting (non-NaN) region of the summed image is returned.
@@ -107,9 +51,9 @@ function stitch(img1::AbstractArray{T,2}, img2::AbstractArray{T,2}, tfm; flip_y_
     img2_pre = ypad(img2, yroi+2*yextra; pad_side=:both, flip_y=flip_y_img2, fillval=0.0) #fillvals should be NaN, but currently interpolations doesn't handle it well (imputes NaNs at gridpoints)
     img1 = ypad(img1, yroi+2*yextra; pad_side=:both, flip_y=false, fillval=0.0)
     img2 = warp(img2_pre, tfm)
-	itp = interpolate(img2, BSpline(Linear()), OnGrid())
-	etp = extrapolate(itp, 0.0)
-	img2 = etp[indices(img2_pre)...]
+    itp = interpolate(img2, BSpline(Linear()), OnGrid())
+    etp = extrapolate(itp, 0.0)
+    img2 = etp[indices(img2_pre)...]
     imgsummed = nanplus(img1,img2)
     return crop_vals(imgsummed, 0.0)
 end
