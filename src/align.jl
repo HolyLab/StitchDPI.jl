@@ -50,51 +50,61 @@ function stitch(img1::AbstractArray{T,2}, img2::AbstractArray{T,2}, tfm; flip_y_
     yextra = ceil(Int, abs(tfm.v[2]))
     img2_pre = ypad(img2, yroi+2*yextra; pad_side=:both, flip_y=flip_y_img2, fillval=0.0) #fillvals should be NaN, but currently interpolations doesn't handle it well (imputes NaNs at gridpoints)
     img1 = ypad(img1, yroi+2*yextra; pad_side=:both, flip_y=false, fillval=0.0)
-    img2 = warp(img2_pre, tfm)
-    itp = interpolate(img2, BSpline(Linear()), OnGrid())
-    etp = extrapolate(itp, 0.0)
-    img2 = etp[indices(img2_pre)...]
+    img2 = warp_and_resample(img2_pre, tfm)
     imgsummed = nanplus(img1,img2)
     return crop_vals(imgsummed, 0.0)
 end
 
-#returns a function f(img1,img2) that stitches a pair of corresponding shared images into a single image.
-#Assumes that img2_roi contains the bottom half of the image and that it needs to be flipped vertically to align with img1_full
-#We also assume that img1_full is perfectly aligned with the half-image from its camera.  This is valid on OCPI2 because camera1's portion of the image does not hit the KEM.  SCRATCH THAT!  We can't assume this, the removal of the dichroic results in a 
-#lateral shift of the image, we must compensate for that.
-function stitch_tfm(img1_full, img2_full, img1_roi, img2_roi; kwargs...)
-    @assert size(img1_full) == size(img2_full)
-    img2_full = flipy(img2_full)
-    img2_roi_pad = ypad(img2_roi, size(img2_full,2); flip_y = true, fillval=NaN)
-    img1_roi_pad = ypad(img1_roi, size(img1_full,2); flip_y = false, fillval=NaN)
-    mxshift_img2 = [10;10]
-    print("Registering the img2 strip to the img2 full image\n")
-    img2_pre_tfm, pre_mm = qd_rigid(img2_full, img2_roi_pad, mxshift_img2, [pi/2000], [pi/1000]; thresh=0.4*sum(abs2.(img2_roi_pad[.!(isnan.(img2_roi_pad))])), kwargs...)
-    post_tfm_guess = initial_share_tfm(size(img2_full,2), size(img2_roi,2)) ∘ img2_pre_tfm 
-    mxshift_xcam = [50; ceil(Int, size(img2_roi, 2)+100)]
-    print("Registering the img2 full image to the img1 full image\n")
-    img2_post_tfm, post_mm = qd_rigid(img1_full, img2_roi_pad, mxshift_xcam, [pi/10], [pi/10000]; tfm0= post_tfm_guess, thresh=0.4*sum(abs2.(img2_roi_pad[.!(isnan.(img2_roi_pad))])), kwargs...)
-    mxshift_img1 = [100;100]
-    print("Registering the img1 full image to the img1 strip\n")
-    img1_self_tfm, mm_self1 = qd_rigid(img1_roi_pad, img1_full, mxshift_img1, [pi/2000], [pi/1000]; thresh=0.4*sum(abs2.(img1_roi_pad[.!(isnan.(img1_roi_pad))])), kwargs...)
-    return img1_self_tfm ∘ img2_post_tfm
+function warp_and_resample(img, tfm; fillval=0.0)
+    inds0 = indices(img)
+    img = warp(img, tfm)
+    itp = interpolate(img, BSpline(Linear()), OnGrid())
+    etp = extrapolate(itp, fillval)
+    return etp[inds0...]
 end
 
-#fake split images with requested split
-#returns the top full/split images first, then bottom
-#ysz_roi is the size of one camera's ROI (so total combined image will have dimension 2x ysz_roi)
-function fake_split(ysz_chip, ysz_roi; frac_overlap=0.0, xsz=20)
-    @assert iseven(ysz_chip)
-    @assert iseven(ysz_roi)
-    @assert 0.0 <= frac_overlap <= 1.0
-    npix_extra = div(ysz_chip - ysz_roi, 2) #unused vertical roi  (symmetric above and below)
-    npix_overlap = ceil(Int, frac_overlap * ysz_roi) #number of pixels overlapping between shared images (zero would mean no redundant pixels)
-    chip_halfsz = div(ysz_chip,2)
-    ysz_full = 2*ysz_roi - npix_overlap + 2*npix_extra
-    full_img = rand(xsz, ysz_full)
-    full_top = full_img[:,1:ysz_chip]
-    full_bottom = full_img[:,(ysz_full-ysz_chip+1):ysz_full]
-    img_top = full_top[:,(npix_extra+1):(npix_extra+ysz_roi)]
-    img_bottom = full_bottom[:,(npix_extra+1):(npix_extra+ysz_roi)]
-    return full_top, img_top, full_bottom, img_bottom
+#returns a transform that stitches a pair of corresponding shared images into a single image when passed to the stitch function
+#Assumes that moving_roi contains the bottom half of the image and that it needs to be flipped vertically to align with fixed_full and fixed_roi.
+#We can't assume that fixed_full is perfectly aligned with the half-image (fixed_roi) from its camera. That's because the removal of the dichroic results in a 
+#lateral shift of the image, so we must compensate for that.
+function stitch_tfm(fixed_full, moving_full, fixed_roi, moving_roi; kwargs...)
+    @assert size(fixed_full) == size(moving_full)
+    moving_full = flipy(moving_full)
+    fixed_roi_pad = ypad(fixed_roi, size(fixed_full,2); flip_y = false, fillval=NaN)
+    moving_roi_pad = ypad(moving_roi, size(moving_full,2); flip_y = true, fillval=NaN)
+    print("Registering the moving strip to the moving full image\n")
+    mxshift_moving = [10;10]
+    moving_pre_tfm, pre_mm = register_padmatched(moving_full, moving_roi_pad, mxshift_moving, [pi/2000;], [pi/1000]; thresh=0.4*sum(abs2.(moving_roi_pad[.!(isnan.(moving_roi_pad))])), kwargs...)
+    mxshift_xcam = [50; ceil(Int, size(moving_roi, 2)+100)]
+    print("Registering the moving full image to the fixed full image\n")
+    moving_post_tfm, post_mm = full2full(fixed_full, moving_roi_pad, size(moving_roi, 2), mxshift_xcam, [pi/10], [pi/10000]; tfm0=moving_pre_tfm, thresh=0.4*sum(abs2.(moving_roi_pad[.!(isnan.(moving_roi_pad))])), kwargs...)
+    mxshift_fixed = [100;100]
+    print("Registering the fixed full image to the fixed strip\n")
+    fixed_self_tfm, mm_self1 = register_padmatched(fixed_roi_pad, fixed_full, mxshift_fixed, [pi/2000], [pi/1000]; thresh=0.4*sum(abs2.(fixed_roi_pad[.!(isnan.(fixed_roi_pad))])), kwargs...)
+    return fixed_self_tfm ∘ moving_post_tfm
+end
+
+#Makes an initial guess based on stripsz
+function full2full(fixed, moving, stripsz::Int, mxshift, mxrot, rotstep; thresh = 0.1*sum(abs2.(moving[.!(isnan.(moving))])), tfm0 = IdentityTransformation(), kwargs...)
+    @assert size(fixed) == size(moving)
+    tfm_guess = tfm0 ∘ initial_share_tfm(size(fixed,2), stripsz)
+    tfm, mm = register_padmatched(fixed, moving, mxshift, mxrot, rotstep; thresh=thresh, tfm0=tfm_guess, kwargs...)
+end
+
+function register_padmatched(fixed::AbstractMatrix, moving::AbstractMatrix, mxshift, mxrot, rotstep; thresh = 0.1*sum(abs2.(moving[.!(isnan.(moving))])), tfm0 = IdentityTransformation(), kwargs...)
+    if size(fixed,1) != size(moving, 1)
+        error("Images must be equally sized in the first dimension")
+    end
+    fixed, moving = match_ypadding(fixed, moving)
+    tfm, mm = qd_rigid(fixed, moving, mxshift, [mxrot...], [rotstep...]; thresh=thresh, tfm0=tfm0, kwargs...)
+end
+
+function match_ypadding(img1, img2; padval=NaN)
+    if size(img1,2) > size(img2, 2)
+        img2 = ypad(img2, size(img1,2); flip_y = false, fillval=padval)
+    end
+    if size(img1,2) < size(img2, 2)
+        img1 = ypad(img1, size(img2,2); flip_y = false, fillval=padval)
+    end
+    return img1, img2
 end

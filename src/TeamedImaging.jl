@@ -5,7 +5,7 @@ using BlockRegistration, RegisterOptimize
 
 import Base: size, getindex, show, eltype
 
-export stitch_tfm, stitch, StitchedSeries, ZWarpedArray
+export stitch_tfm, stitch, warp_and_resample, register_padmatched, full2full, StitchedSeries, ZWarpedArray
 
 include("util.jl")
 include("preprocess.jl")
