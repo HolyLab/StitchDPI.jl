@@ -56,15 +56,6 @@ function stitch(img_top_fixed::AbstractArray{T,2}, img_bottom_moving::AbstractAr
     return view(imgsummed, :, (yroi+1):3*yroi)
 end
 
-_index_extrap(etp, inds) = etp[inds...]
-function warp_and_resample(img, tfm; fillval=0.0)
-    inds0 = indices(img)
-    img = warp(img, tfm)
-    itp = interpolate(img, BSpline(Linear()), OnGrid())
-    etp = extrapolate(itp, fillval)
-    return _index_extrap(etp, inds0) #Function barrier improves performance
-end
-
 #returns a transform that stitches a pair of corresponding shared images into a single image when passed to the stitch function
 #Assumes that moving_roi contains the bottom half of the image and that it needs to be flipped vertically to align with fixed_full and fixed_roi.
 #We can't assume that fixed_full is perfectly aligned with the half-image (fixed_roi) from its camera. That's because the removal of the dichroic results in a 

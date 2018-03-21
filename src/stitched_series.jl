@@ -27,7 +27,6 @@ function StitchedSeries(img_top::Array34{T}, img_bottom::Array34{T}, tfm::Tform,
     return StitchedSeries(img_top, img_bottom, tfms, out_type; correct_bias=correct_bias, sqrt_tfm=sqrt_tfm, flip_y_bottom=flip_y_bottom)
 end
 
-#function StitchedSeries(img_top::Array34{T}, img_bottom::Array34{T}, tfms::Vector{T2}, out_type=Float64; correct_bias=true, sqrt_tfm=false, flip_y_bottom=true) where {T, T2<:Tform}
 function StitchedSeries(img_top::Array34{T}, img_bottom::Array34{T}, tfms, out_type=Float64; correct_bias=true, sqrt_tfm=false, flip_y_bottom=true) where {T}
     szt, szb = size(img_top), size(img_bottom)
     for i =1:4

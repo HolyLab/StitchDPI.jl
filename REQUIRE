@@ -7,3 +7,6 @@ AxisArrays
 Images
 MappedArrays
 BlockRegistration
+CachedSeries
+ZWarpedArrays
+InterlacedStacks

@@ -1,5 +1,3 @@
-const Array34{T} = Union{AbstractArray{T,3}, AbstractArray{T,4}}
-
 function ypad(img, padded_size::Int; flip_y = true, fillval = eltype(img)(NaN), pad_side=:both)
     @assert ndims(img) == 2
     @assert padded_size >= size(img,2)
@@ -168,10 +166,6 @@ function fake_split(ysz_chip, ysz_roi; frac_overlap=0.0, xsz=20)
     img_bottom = full_bottom[:,(npix_extra+1):(npix_extra+ysz_roi)]
     return full_top, img_top, full_bottom, img_bottom
 end
-
-#for StitchedSeries
-_idxs(A, dim, idxs) = idxs
-_idxs(A, dim, idxs::Colon) = indices(A,dim)
 
 axisspacing(A::AxisArray) = map(step, axisvalues(A))
 match_axisspacing(B::AbstractArray{T,N}, A::IM) where {T,N, IM<:ImageMeta} = ImageMeta(match_axisspacing(B, data(A)), properties(A))
