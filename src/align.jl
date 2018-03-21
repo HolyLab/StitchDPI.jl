@@ -33,34 +33,36 @@ function initial_share_tfm(ysz_chip::Int, ysz_roi::Int)
     return Translation(0, -ysz_roi)
 end
 
-#Stitches img1 and img2 using a tranformation tfm that, when applied to img2, aligns it with img1.  Since img1 and img2 are expected to have little-to-no overlap
-#they are padded before applying the transformation.  The transformed img2 is added to img1 and the interesting (non-NaN) region of the summed image is returned.
-#function stitch(img1, img2, tfm, y_sz; flip_y_img2 = true)
-function stitch(img1::AbstractArray{T,2}, img2::AbstractArray{T,2}, tfm, out_type::DataType; flip_y_img2 = true) where {T}
+#Stitches img_top_fixed and img_bottom_moving using a tranformation tfm that, when applied to img_bottom_moving, aligns it with img_top_fixed.  Since img_top_fixed and img_bottom_moving are expected to have little-to-no overlap
+#they are padded before applying the transformation.  The transformed img_bottom_moving is added to img_top_fixed and the interesting (non-NaN) region of the summed image is returned.
+#function stitch(img_top_fixed, img_bottom_moving, tfm, y_sz; flip_y_bottom = true)
+function stitch(img_top_fixed::AbstractArray{T,2}, img_bottom_moving::AbstractArray{T,2}, tfm, out_type::DataType; flip_y_bottom = true) where {T}
     if T!=out_type
-        img1 = out_type.(img1)
-        img2 = out_type.(img2)
+        img_top_fixed = out_type.(img_top_fixed)
+        img_bottom_moving = out_type.(img_bottom_moving)
     end
-    return stitch(img1, img2, tfm; flip_y_img2=flip_y_img2)
+    return stitch(img_top_fixed, img_bottom_moving, tfm; flip_y_bottom=flip_y_bottom)
 end
 
-function stitch(img1::AbstractArray{T,2}, img2::AbstractArray{T,2}, tfm; flip_y_img2 = true) where {T}
-    yroi = size(img1,2)
-    @assert size(img2,2) == yroi
+function stitch(img_top_fixed::AbstractArray{T,2}, img_bottom_moving::AbstractArray{T,2}, tfm; flip_y_bottom = true) where {T}
+    yroi = size(img_top_fixed,2)
+    @assert size(img_bottom_moving,2) == yroi
     yextra = ceil(Int, abs(tfm.v[2]))
-    img2_pre = ypad(img2, yroi+2*yextra; pad_side=:both, flip_y=flip_y_img2, fillval=0.0) #fillvals should be NaN, but currently interpolations doesn't handle it well (imputes NaNs at gridpoints)
-    img1 = ypad(img1, yroi+2*yextra; pad_side=:both, flip_y=false, fillval=0.0)
-    img2 = warp_and_resample(img2_pre, tfm)
-    imgsummed = nanplus(img1,img2)
-    return crop_vals(imgsummed, 0.0)
+    #Note: should probably recenter tfm because it was centered on a full-chip image when found with stitch_tfm()
+    img_bottom_moving_pre = ypad(img_bottom_moving, 3*yroi; pad_side=:both, flip_y=flip_y_bottom, fillval=0.0) #fillvals should be NaN, but currently interpolations doesn't handle it well (imputes NaNs at gridpoints)
+    img_top_fixed = ypad(img_top_fixed, 3*yroi; pad_side=:both, flip_y=false, fillval=0.0)
+    img_bottom_moving = warp_and_resample(img_bottom_moving_pre, tfm)
+    imgsummed = nanplus(img_top_fixed,img_bottom_moving)
+    return view(imgsummed, :, (yroi+1):3*yroi)
 end
 
+_index_extrap(etp, inds) = etp[inds...]
 function warp_and_resample(img, tfm; fillval=0.0)
     inds0 = indices(img)
     img = warp(img, tfm)
     itp = interpolate(img, BSpline(Linear()), OnGrid())
     etp = extrapolate(itp, fillval)
-    return etp[inds0...]
+    return _index_extrap(etp, inds0) #Function barrier improves performance
 end
 
 #returns a transform that stitches a pair of corresponding shared images into a single image when passed to the stitch function

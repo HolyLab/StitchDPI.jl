@@ -15,7 +15,7 @@ for t = 1:size(imgtop,4)
 end
 
 #ss = ss = StitchedSeries(cam1, cam2, tfm; correct_bias=true, sqrt_tfm=true);
-ss = StitchedSeries(imgtop, imgbottom, tfm; correct_bias=false, sqrt_tfm=false, flipy_bottom=true);
+ss = StitchedSeries(imgtop, imgbottom, tfm; correct_bias=false, sqrt_tfm=false, flip_y_bottom=true);
 #ss = StitchedSeries(ImageMeta(AxisArray(imgtop)), ImageMeta(AxisArray(imgbottom)), tfm; correct_bias=false, sqrt_tfm=false);
 for t = 1:size(imgtop,4)
     for z = 1:size(imgtop,3)
@@ -27,7 +27,7 @@ end
 @test all(TeamedImaging.correctbias(rb) .== map(x->eltype(rb)(max(x-100/(2^16), 0.0)), rb))
 
 #With bias correction
-ssb = StitchedSeries(imgtop, imgbottom, tfm; correct_bias=true, sqrt_tfm=false, flipy_bottom=true);
+ssb = StitchedSeries(imgtop, imgbottom, tfm; correct_bias=true, sqrt_tfm=false, flip_y_bottom=true);
 for t = 1:size(imgtop,4)
     for z = 1:size(imgtop,3)
         @test all(ssb[:,1:size(imgtop,2),z,t] .== TeamedImaging.correctbias(rt))
@@ -36,7 +36,7 @@ for t = 1:size(imgtop,4)
 end
 
 #With bias correction and square root
-ssq = StitchedSeries(imgtop, imgbottom, tfm; correct_bias=true, sqrt_tfm=true, flipy_bottom=true);
+ssq = StitchedSeries(imgtop, imgbottom, tfm; correct_bias=true, sqrt_tfm=true, flip_y_bottom=true);
 for t = 1:size(imgtop,4)
     for z = 1:size(imgtop,3)
         @test all(ssq[:,1:size(imgtop,2),z,t] .== TeamedImaging.sqrtimg(Float64.(TeamedImaging.correctbias(rt))))
