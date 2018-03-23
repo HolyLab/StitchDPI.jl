@@ -42,7 +42,7 @@ function multiproc_write!(mmapA::AbstractArray{T,4}, img::AbstractArray{T2,4}) w
         rrefs = []
         ws = workers()
 #    Threads.@threads for i=1:size(img,4)
-        for i=1:length(ws)
+        for i=1:length(idxs)
             push!(rrefs, remotecall(getindex, ws[i], img, :,:,:,idxs[i]))
         end
         for i=1:length(idxs)
