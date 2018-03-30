@@ -1,6 +1,8 @@
-#A multithreaded write method for saving large image sequences in NRRD format
-#To get the benefit of threading start julia with multiple threads:
-#JULIA_NUM_THREADS=x julia (where you choose x)
+#(When threading works, not yet):
+#       To get the benefit of threading start julia with multiple threads:
+#       JULIA_NUM_THREADS=x julia (where you choose x)
+
+#A multiprocess write method for saving large image sequences in NRRD format
 #This function is useful when retrieving a stack from img takes a lot of time due to lazy computation
 function multiproc_write(fname::AbstractString, img::AbstractArray{T,4}, out_type=T) where {T}
     bname, ext = splitext(fname)

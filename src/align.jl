@@ -44,16 +44,21 @@ function stitch(img_top_fixed::AbstractArray{T,2}, img_bottom_moving::AbstractAr
     return stitch(img_top_fixed, img_bottom_moving, tfm; flip_y_bottom=flip_y_bottom)
 end
 
-function stitch(img_top_fixed::AbstractArray{T,2}, img_bottom_moving::AbstractArray{T,2}, tfm; flip_y_bottom = true) where {T}
+#For most accurate stitching you must provide ysz_full, the size in the y dimension of full images used to compute tfm with the stitch_tfm function
+function stitch(img_top_fixed::AbstractArray{T,2}, img_bottom_moving::AbstractArray{T,2}, tfm; flip_y_bottom = true, ysz_full=2048) where {T}
     yroi = size(img_top_fixed,2)
     @assert size(img_bottom_moving,2) == yroi
     yextra = ceil(Int, abs(tfm.v[2]))
-    #Note: should probably recenter tfm because it was centered on a full-chip image when found with stitch_tfm()
-    img_bottom_moving_pre = ypad(img_bottom_moving, 3*yroi; pad_side=:both, flip_y=flip_y_bottom, fillval=0.0) #fillvals should be NaN, but currently interpolations doesn't handle it well (imputes NaNs at gridpoints)
-    img_top_fixed = ypad(img_top_fixed, 3*yroi; pad_side=:both, flip_y=false, fillval=0.0)
+    #img_bottom_moving_pre = ypad(img_bottom_moving, 3*yroi; pad_side=:both, flip_y=flip_y_bottom, fillval=0.0) #fillvals should be NaN, but currently interpolations doesn't handle it well (imputes NaNs at gridpoints)
+    img_bottom_moving_pre = ypad(img_bottom_moving, ysz_full; pad_side=:both, flip_y=flip_y_bottom, fillval=0.0) #fillvals should be NaN, but currently interpolations doesn't handle it well (imputes NaNs at gridpoints)
+    #img_top_fixed = ypad(img_top_fixed, 3*yroi; pad_side=:both, flip_y=false, fillval=0.0)
+    img_top_fixed = ypad(img_top_fixed, ysz_full; pad_side=:both, flip_y=false, fillval=0.0)
     img_bottom_moving = warp_and_resample(img_bottom_moving_pre, tfm)
     imgsummed = nanplus(img_top_fixed,img_bottom_moving)
-    return view(imgsummed, :, (yroi+1):3*yroi)
+    #return view(imgsummed, :, (yroi+1):3*yroi)
+    ystart = div(ysz_full,2) - div(yroi,2) + 1
+    #ystart = div((ysz_full - 2*yroi),2) + 1
+    return view(imgsummed, :, ystart:ystart+2*yroi-1)
 end
 
 #returns a transform that stitches a pair of corresponding shared images into a single image when passed to the stitch function
@@ -66,21 +71,31 @@ function stitch_tfm(fixed_full, moving_full, fixed_roi, moving_roi; kwargs...)
     fixed_roi_pad = ypad(fixed_roi, size(fixed_full,2); flip_y = false, fillval=NaN)
     moving_roi_pad = ypad(moving_roi, size(moving_full,2); flip_y = true, fillval=NaN)
     print("Registering the moving strip to the moving full image\n")
-    mxshift_moving = [10;10]
-    moving_pre_tfm, pre_mm = register_padmatched(moving_full, moving_roi_pad, mxshift_moving, [pi/2000;], [pi/1000]; thresh=0.4*sum(abs2.(moving_roi_pad[.!(isnan.(moving_roi_pad))])), kwargs...)
-    mxshift_xcam = [50; ceil(Int, size(moving_roi, 2)+100)]
-    print("Registering the moving full image to the fixed full image\n")
-    moving_post_tfm, post_mm = full2full(fixed_full, moving_roi_pad, size(moving_roi, 2), mxshift_xcam, [pi/10], [pi/10000]; tfm0=moving_pre_tfm, thresh=0.4*sum(abs2.(moving_roi_pad[.!(isnan.(moving_roi_pad))])), kwargs...)
-    mxshift_fixed = [100;100]
-    print("Registering the fixed full image to the fixed strip\n")
-    fixed_self_tfm, mm_self1 = register_padmatched(fixed_roi_pad, fixed_full, mxshift_fixed, [pi/2000], [pi/1000]; thresh=0.4*sum(abs2.(fixed_roi_pad[.!(isnan.(fixed_roi_pad))])), kwargs...)
-    return fixed_self_tfm ∘ moving_post_tfm
+    mxshift_moving = [50; size(moving_roi,2)+50]
+    moving_pre_tfm, pre_mm = register_padmatched(moving_full, moving_roi_pad, mxshift_moving, [pi/60], [pi/10000]; thresh=0.85*sum(abs2.(moving_roi_pad[.!(isnan.(moving_roi_pad))])), kwargs...)
+    @show moving_pre_tfm
+    #moving_pre_tfm, pre_mm = register_padmatched(moving_roi_pad, moving_full, mxshift_moving, [pi/2000;], [pi/1000]; thresh=0.4*sum(abs2.(moving_roi_pad[.!(isnan.(moving_roi_pad))])), kwargs...)
+    #moving_pre_tfm = IdentityTransformation()
+    mxshift_xcam = [50; size(moving_roi, 2)]
+    print("Registering the moving full image to the fixed strip\n")
+    moving_post_tfm, post_mm = full2full(fixed_roi_pad, moving_full, size(moving_roi, 2), mxshift_xcam, [pi/60], [pi/10000]; thresh=0.85*sum(abs2.(moving_roi_pad[.!(isnan.(moving_roi_pad))])), kwargs...)
+    #moving_post_tfm, post_mm = full2full(fixed_full, moving_full, size(moving_roi, 2), mxshift_xcam, [pi/10], [pi/10000]; thresh=0.1*sum(abs2.(moving_roi_pad[.!(isnan.(moving_roi_pad))])), kwargs...)
+    #moving_post_tfm, post_mm = full2full(fixed_full, moving_roi_pad, size(moving_roi, 2), mxshift_xcam, [pi/10], [pi/10000]; tfm0=moving_pre_tfm, thresh=0.1*sum(abs2.(moving_roi_pad[.!(isnan.(moving_roi_pad))])), kwargs...)
+    @show moving_post_tfm
+#    @show post_mm
+#    mxshift_fixed = [50;850]
+#    print("Registering the fixed full image to the fixed strip\n")
+#    fixed_self_tfm, mm_self1 = register_padmatched(fixed_roi_pad, fixed_full, mxshift_fixed, [pi/20], [pi/10000]; thresh=0.1*sum(abs2.(fixed_roi_pad[.!(isnan.(fixed_roi_pad))])), kwargs...)
+#    @show fixed_self_tfm
+#    @show outtfm =  fixed_self_tfm ∘ moving_post_tfm ∘ moving_pre_tfm
+    return moving_post_tfm ∘ moving_pre_tfm
+    #return fixed_self_tfm ∘ moving_post_tfm
 end
 
 #Makes an initial guess based on stripsz
 function full2full(fixed, moving, stripsz::Int, mxshift, mxrot, rotstep; thresh = 0.1*sum(abs2.(moving[.!(isnan.(moving))])), tfm0 = IdentityTransformation(), kwargs...)
     @assert size(fixed) == size(moving)
-    tfm_guess = tfm0 ∘ initial_share_tfm(size(fixed,2), stripsz)
+    tfm_guess = initial_share_tfm(size(fixed,2), stripsz) ∘ tfm0
     tfm, mm = register_padmatched(fixed, moving, mxshift, mxrot, rotstep; thresh=thresh, tfm0=tfm_guess, kwargs...)
 end
 
