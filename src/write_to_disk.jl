@@ -5,20 +5,24 @@
 #A multiprocess write method for saving large image sequences in NRRD format
 #This function is useful when retrieving a stack from img takes a lot of time due to lazy computation
 function multiproc_write(fname::AbstractString, img::AbstractArray{T,4}, out_type=T) where {T}
+    mmapa = prep_nnrd_write(fname, img, T)
+    #pp = out_type == T ? x->x : x->out_type.(x)
+    multiproc_write!(mmapa, img)
+end
+
+function prep_nrrd_write(fname::AbstractString, img::AbstractArray{T,N}, out_type=T) where {T,N}
     bname, ext = splitext(fname)
     if !isempty(ext) && !in(ext, [".nhdr", ".nrrd"])
         error("Must write in NRRD format (.nhdr or .nrrd extension)")
     end
-    outfile = Mmap.mmap(bname*".raw", Array{out_type, 4}, size(img); shared=true)
+    mmapa = Mmap.mmap(bname*".raw", Array{out_type, N}, size(img); shared=true)
     header = NRRD.headerinfo(out_type, axes(img))
     header["datafile"] = bname*".raw"
     open(fname, "w") do io
         write(io, magic(format"NRRD"))
         NRRD.write_header(io, "0004", header)
     end
-
-    #pp = out_type == T ? x->x : x->out_type.(x)
-    multiproc_write!(outfile, img)
+    return mmapa
 end
 
 #Multithreading would be nice, but currently this doesn't seem to work well, perhaps because IO operations and external C library calls are restricted to one thread (see julia parallel docs as off march 2018)
