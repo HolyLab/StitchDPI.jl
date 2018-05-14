@@ -9,7 +9,7 @@ import Base: size, getindex, setindex!, show
 import CachedSeries: update_cache!, cache, cache_idxs
 import ZWarpedArrays: Array34
 
-export stitch_tfm, stitch, register_padmatched, full2full, 
+export stitch_tfm, stitch, mg_overlay, stitched_mg_overlay,# register_padmatched, full2full, 
         StitchedSeries,
         lazy_load, multiproc_write
 
