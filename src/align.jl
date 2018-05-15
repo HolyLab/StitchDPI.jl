@@ -85,8 +85,8 @@ nanz(x) = ifelse(isnan(x), zero(x), x)
 #green and magenta overlay
 mg_overlay(img1, img2) = colorview(RGB, nanz.(img1), nanz.(img2), nanz.(img1))
 #green and magenta overlay, one color per half-image
-function stitched_mg_overlay(strip1, strip2, tfm, ysz_full; flip_y2=true)
-    strip0 = zeros(size(strip1))
+function stitched_mg_overlay(strip1::AbstractArray{T,2}, strip2::AbstractArray{T,2}, tfm, ysz_full; flip_y2=true) where {T}
+    strip0 = zeros(T, size(strip1))
     simg1 = stitch(strip1, strip0, tfm; flip_y_bottom = false, ysz_full=ysz_full)
     simg2 = stitch(strip0, strip2, tfm; flip_y_bottom = flip_y2, ysz_full=ysz_full)
     return mg_overlay(simg1,simg2)
