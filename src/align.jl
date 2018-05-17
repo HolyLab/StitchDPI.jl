@@ -68,12 +68,12 @@ function stitch_tfm(moving_full, fixed_roi, moving_roi; trunc_frac=0.1, kwargs..
 
     print("Registering the moving full image to the fixed strip\n")
     f_roi_pwr = sum(abs2.(fixed_roi_pad[.!(isnan.(fixed_roi_pad))]))
-    moving_post_rigid, post_rigid_mm = qd_rigid(fixed_roi_pad, moving_full, mxshift_xcam, [pi/80], [pi/10000]; thresh=0.5*f_roi_pwr, kwargs...)
+    moving_post_rigid, post_rigid_mm = qd_rigid(fixed_roi_pad, moving_full, mxshift_xcam, [pi/60], [pi/10000]; thresh=0.5*f_roi_pwr, kwargs...)
     @show moving_post_rigid
 
     #refine it further, allowing scaling
     print("Found rigid transform, now optimizing allowing general affine transforms\n")
-    moving_post_tfm, post_mm = qd_affine(fixed_roi_pad, moving_full, [20;20]; thresh=0.5*f_roi_pwr, tfm0=moving_post_rigid, kwargs...)
+    moving_post_tfm, post_mm = qd_affine(fixed_roi_pad, moving_full, [50;50]; thresh=0.5*f_roi_pwr, tfm0=moving_post_rigid, kwargs...)
     @show moving_post_tfm
 
     return recenter(moving_post_tfm ∘ moving_pre_tfm, center(moving_full)), post_mm
