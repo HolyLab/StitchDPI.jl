@@ -27,8 +27,8 @@ imgst = stitch(rt, TeamedImaging.flipy(rb), tfm; flip_y_bottom = true)
 
 #stitch transform generation
 tfmfound, mm = stitch_tfm(TeamedImaging.flipy(fb), rt, TeamedImaging.flipy(rb); maxevals=500)
-@test sum(abs.(tfmfound.m - eye(2))) < 1e-7
-@test sum(abs.(tfmfound.v - tfm.v)) < 1e-7
+@test sum(abs.(tfmfound.linear - eye(2))) < 1e-7
+@test sum(abs.(tfmfound.translation - tfm.translation)) < 1e-7
 #simg = stitch(rt, TeamedImaging.flipy(rb), tfmfound, size(ft,2); flip_y_bottom = true)
 #simg = stitch(rt, TeamedImaging.flipy(rb), tfmfound; flip_y_bottom = true)
 #@test all(simg.==imgst)
@@ -36,8 +36,8 @@ tfmfound, mm = stitch_tfm(TeamedImaging.flipy(fb), rt, TeamedImaging.flipy(rb); 
 #with ten pixels of overlap
 ft, rt, fb, rb = TeamedImaging.fake_split(80, 40; frac_overlap = 0.25, xsz = 40)
 tfmfound, mm = stitch_tfm(TeamedImaging.flipy(fb), rt, TeamedImaging.flipy(rb); maxevals=500)
-@test sum(abs.(tfmfound.m - eye(2))) < 1e-7
-@test sum(abs.(tfmfound.v - (tfm.v.+[0.0; 10.0]))) < 1e-7
+@test sum(abs.(tfmfound.linear - eye(2))) < 1e-7
+@test sum(abs.(tfmfound.translation - (tfm.translation.+[0.0; 10.0]))) < 1e-7
 #simg = stitch(rt, TeamedImaging.flipy(rb), tfmfound, size(ft,2); flip_y_bottom = true)
 #simg = stitch(rt, TeamedImaging.flipy(rb), tfmfound; flip_y_bottom = true)
 #@test all(simg[:,31:40].==(rt[:,31:40].*2))

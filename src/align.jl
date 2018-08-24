@@ -34,7 +34,7 @@ end
 function stitch(img_top_fixed::AbstractArray{T,2}, img_bottom_moving::AbstractArray{T,2}, tfm; flip_y_bottom = true, ysz_full=2048) where {T}
     yroi = size(img_top_fixed,2)
     @assert size(img_bottom_moving,2) == yroi
-    yextra = ceil(Int, abs(tfm.v[2]))
+    yextra = ceil(Int, abs(tfm.translation[2]))
     #fillvals should be NaN, but currently interpolations doesn't handle it well (imputes NaNs at gridpoints)
     img_bottom_moving_pre = ypad(img_bottom_moving, ysz_full; pad_side=:both, flip_y=flip_y_bottom, fillval=0.0)
     img_top_fixed = ypad(img_top_fixed, ysz_full; pad_side=:both, flip_y=false, fillval=0.0)
