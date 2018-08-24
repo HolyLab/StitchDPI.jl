@@ -50,7 +50,7 @@ function stitch_tfm(moving_full, fixed_roi, moving_roi; trunc_frac=0.1, kwargs..
     @assert size(fixed_roi) == size(moving_roi)
 
     #bright bead clumps can bias calculation, so truncate them at this value:
-    trunc_thr = trunc_frac * maximum(fixed_roi)
+    trunc_thr = trunc_frac * maxfinite(fixed_roi)
     moving_roi = trunc_above.(moving_roi, trunc_thr)
     fixed_roi = trunc_above.(fixed_roi, trunc_thr)
     moving_full = trunc_above.(moving_full, trunc_thr)
@@ -73,7 +73,7 @@ function stitch_tfm(moving_full, fixed_roi, moving_roi; trunc_frac=0.1, kwargs..
 
     #refine it further, allowing scaling
     print("Found rigid transform, now optimizing allowing general affine transforms\n")
-    moving_post_tfm, post_mm = qd_affine(fixed_roi_pad, moving_full, [50;50]; thresh=0.5*f_roi_pwr, tfm0=moving_post_rigid, kwargs...)
+    moving_post_tfm, post_mm = qd_affine(fixed_roi_pad, moving_full, [50;50]; thresh=0.5*f_roi_pwr, initial_tfm=moving_post_rigid, kwargs...)
     @show moving_post_tfm
 
     return recenter(moving_post_tfm ∘ moving_pre_tfm, center(moving_full)), post_mm
@@ -95,14 +95,14 @@ end
 #By convention, we align images to camera1, which has the top portion of the split image on OCPI2
 #This returns an initial guess translation mapping camera 2's image to camera1's image after camera2's image has been flipped (flip required on OCPI2)
 #ysz_roi is the pixel size of the image in the vertical direction (the dimension that gets split between cameras)
-#function initial_share_tfm(ysz_chip::Int, ysz_roi::Int)
-#    @assert iseven(ysz_chip)
-#    @assert iseven(ysz_roi)
-#    if ysz_roi > ysz_chip
-#        error("ROI size cannot be larger than chip size")
-#    end
-#    return Translation(0, -ysz_roi)
-#end
+function initial_share_tfm(ysz_chip::Int, ysz_roi::Int)
+    @assert iseven(ysz_chip)
+    @assert iseven(ysz_roi)
+    if ysz_roi > ysz_chip
+        error("ROI size cannot be larger than chip size")
+    end
+    return Translation(0, -ysz_roi)
+end
 #
 #Makes an initial guess based on stripsz
 #function full2full(fixed, moving, stripsz::Int, mxshift, mxrot, rotstep; thresh = 0.1*sum(abs2.(moving[.!(isnan.(moving))])), tfm0 = IdentityTransformation(), kwargs...)
