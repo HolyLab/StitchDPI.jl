@@ -1,6 +1,6 @@
 julia 0.6
 CoordinateTransformations 0.4.1 0.4.1+
-Interpolations 0.7.3 0.7.3+
+Interpolations 0.8.0 0.8.0+
 PaddedViews 0.3.0 0.3.0+
 Unitful 0.8.0 0.8.0+
 AxisArrays 0.2.1 0.2.1+
