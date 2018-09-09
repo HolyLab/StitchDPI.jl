@@ -60,18 +60,25 @@ function stitch_tfm(moving_full, fixed_roi, moving_roi; trunc_frac=0.1, kwargs..
     fixed_roi_pad = ypad(fixed_roi, size(moving_full,2); flip_y = false, fillval=NaN)
     moving_roi_pad = ypad(moving_roi, size(moving_full,2); flip_y = true, fillval=NaN)
 
+    #################### Moving trip to moving full
     print("Registering the moving strip to the moving full image\n")
     mxshift_moving = [50; size(moving_roi,2)+50]
-    moving_pre_tfm, pre_mm = qd_rigid(moving_full, moving_roi_pad, mxshift_moving, [pi/60], [pi/10000]; thresh=0.85*sum(abs2.(moving_roi_pad[.!(isnan.(moving_roi_pad))])), kwargs...)
-    @show moving_pre_tfm
-    mxshift_xcam = [50; round(Int, size(moving_roi, 2)+50)]
+    m_roi_pwr = sum(abs2.(moving_roi_pad[.!(isnan.(moving_roi_pad))]))
+    moving_pre_rigid, pre_rigid_mm = qd_rigid(moving_full, moving_roi_pad, mxshift_moving, [pi/60], [pi/10000]; thresh=0.85*m_roi_pwr, kwargs...)
+    @show moving_pre_rigid
 
+    #refine it further, allowing full affine
+    moving_pre_tfm, pre_mm = qd_affine(moving_full, moving_roi_pad, [50;50]; thresh=0.5*m_roi_pwr, initial_tfm=moving_pre_rigid, kwargs...)
+    @show moving_pre_tfm
+
+    #################### Moving trip to moving full
     print("Registering the moving full image to the fixed strip\n")
+    mxshift_xcam = [50; round(Int, size(moving_roi, 2)+50)]
     f_roi_pwr = sum(abs2.(fixed_roi_pad[.!(isnan.(fixed_roi_pad))]))
     moving_post_rigid, post_rigid_mm = qd_rigid(fixed_roi_pad, moving_full, mxshift_xcam, [pi/60], [pi/10000]; thresh=0.5*f_roi_pwr, kwargs...)
     @show moving_post_rigid
 
-    #refine it further, allowing scaling
+    #refine it further, allowing full affine
     print("Found rigid transform, now optimizing allowing general affine transforms\n")
     moving_post_tfm, post_mm = qd_affine(fixed_roi_pad, moving_full, [50;50]; thresh=0.5*f_roi_pwr, initial_tfm=moving_post_rigid, kwargs...)
     @show moving_post_tfm
