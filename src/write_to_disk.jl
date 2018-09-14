@@ -25,6 +25,11 @@ function prep_nrrd_write(fname::AbstractString, img::AbstractArray{T,N}, out_typ
     return mmapa
 end
 
+function multiproc_write!(mmapA::AbstractArray{T,3}, img::AbstractArray{T2,3}) where {T, T2}
+    @assert size(mmapA) == size(img)
+    mmapA[:,:,:] = img[:,:,:]
+end
+
 #Multithreading would be nice, but currently this doesn't seem to work well, perhaps because IO operations and external C library calls are restricted to one thread (see julia parallel docs as off march 2018)
 function multiproc_write!(mmapA::AbstractArray{T,4}, img::AbstractArray{T2,4}) where {T, T2}
     @assert size(mmapA) == size(img)
