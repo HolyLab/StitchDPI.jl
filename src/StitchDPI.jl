@@ -1,4 +1,4 @@
-module TeamedImaging
+module StitchDPI
 
 using CoordinateTransformations, Interpolations, PaddedViews, Unitful, AxisArrays, Images, MappedArrays
 using BlockRegistration, RegisterOptimize

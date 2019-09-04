@@ -1,4 +1,4 @@
-using TeamedImaging, Images, Base.Test
+using StitchDPI, Images, Base.Test
 
 img = rand(3,3,3,4)
 multiproc_write("test.nhdr", img, Float32)

@@ -1,4 +1,4 @@
-The TeamedImaging.jl package is licensed under the MIT "Expat" License:
+The StitchDPI.jl package is licensed under the MIT "Expat" License:
 
 > Copyright (c) 2018: Cody-G.
 >

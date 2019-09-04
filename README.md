@@ -1,1 +1,1 @@
-# TeamedImaging
+# StitchDPI
