@@ -1,9 +1,10 @@
-using StitchDPI, Base.Test
+using StitchDPI, LinearAlgebra, Test
 
 #initial_share_tfm
 ysz_chip = 1000
 ysz_roi = 500
 tfm0 = StitchDPI.initial_share_tfm(ysz_chip, ysz_roi)
+tfm_tol = 1e-6
 
 #fake split
 ft, rt, fb, rb = StitchDPI.fake_split(8, 4; frac_overlap = 0.0, xsz = 4)
@@ -27,8 +28,8 @@ imgst = stitch(rt, StitchDPI.flipy(rb), tfm; flip_y_bottom = true)
 
 #stitch transform generation
 tfmfound, mm = stitch_tfm(StitchDPI.flipy(fb), rt, StitchDPI.flipy(rb); maxevals=500)
-@test sum(abs.(tfmfound.m - eye(2))) < 1e-7
-@test sum(abs.(tfmfound.v - tfm.v)) < 1e-7
+@test sum(abs.(tfmfound.linear - LinearAlgebra.I(2))) < tfm_tol
+@test sum(abs.(tfmfound.translation - tfm.translation)) < tfm_tol
 #simg = stitch(rt, StitchDPI.flipy(rb), tfmfound, size(ft,2); flip_y_bottom = true)
 #simg = stitch(rt, StitchDPI.flipy(rb), tfmfound; flip_y_bottom = true)
 #@test all(simg.==imgst)
@@ -36,8 +37,8 @@ tfmfound, mm = stitch_tfm(StitchDPI.flipy(fb), rt, StitchDPI.flipy(rb); maxevals
 #with ten pixels of overlap
 ft, rt, fb, rb = StitchDPI.fake_split(80, 40; frac_overlap = 0.25, xsz = 40)
 tfmfound, mm = stitch_tfm(StitchDPI.flipy(fb), rt, StitchDPI.flipy(rb); maxevals=500)
-@test sum(abs.(tfmfound.m - eye(2))) < 1e-7
-@test sum(abs.(tfmfound.v - (tfm.v.+[0.0; 10.0]))) < 1e-7
+@test sum(abs.(tfmfound.linear - LinearAlgebra.I(2))) < tfm_tol
+@test sum(abs.(tfmfound.translation - (tfm.translation.+[0.0; 10.0]))) < tfm_tol
 #simg = stitch(rt, StitchDPI.flipy(rb), tfmfound, size(ft,2); flip_y_bottom = true)
 #simg = stitch(rt, StitchDPI.flipy(rb), tfmfound; flip_y_bottom = true)
 #@test all(simg[:,31:40].==(rt[:,31:40].*2))

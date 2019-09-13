@@ -16,7 +16,7 @@ function ypad(img, padded_size::Int; flip_y = true, fillval = eltype(img)(NaN), 
     return PaddedView(fillval, img, (size(img,1),padded_size), first_idx)
 end
 
-flipy(img::AbstractArray{T,2}) where {T} = view(img, :, reverse(last(indices(img))))
+flipy(img::AbstractArray{T,2}) where {T} = view(img, :, reverse(last(axes(img))))
 
 ##Not used
 ##Crops the image to the specified y size (symmetrically crops top and bottom)

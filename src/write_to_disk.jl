@@ -15,7 +15,8 @@ function prep_nrrd_write(fname::AbstractString, img::AbstractArray{T,N}, out_typ
     if !isempty(ext) && !in(ext, [".nhdr", ".nrrd"])
         error("Must write in NRRD format (.nhdr or .nrrd extension)")
     end
-    mmapa = Mmap.mmap(bname*".raw", Array{out_type, N}, size(img); shared=true)
+    s = open(bname*".raw", "w+")
+    mmapa = Mmap.mmap(s, Array{out_type, N}, size(img); shared=true)
     header = NRRD.headerinfo(out_type, axes(img))
     header["datafile"] = bname*".raw"
     open(fname, "w") do io

@@ -1,9 +1,9 @@
-using StitchDPI, Base.Test
+using StitchDPI, Test
 
 #nanplus
 a = ones(10,10)
 b = deepcopy(a)
-a[:,1] = NaN
+a[:,1] .= NaN
 c = StitchDPI.nanplus(a,b)
 @test all(c[:,1] .== 1.0)
 @test all(c[:,2:end] .== 2.0)
@@ -13,7 +13,7 @@ cr = StitchDPI.crop_vals(a, NaN)
 @test size(cr,2) == size(a,2) - 1
 @test size(cr,1) == size(a,1)
 @test all(cr.==a[:,2:end])
-a[8:end,:] = NaN
+a[8:end,:] .= NaN
 cr = StitchDPI.crop_vals(a, NaN)
 @test size(cr,2) == size(a,2) - 1
 @test size(cr,1) == size(a,1) - 3

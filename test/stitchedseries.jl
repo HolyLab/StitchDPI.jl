@@ -1,4 +1,4 @@
-using StitchDPI, Images, Base.Test
+using StitchDPI, Images, Test
 
 ft, rt, fb, rb = StitchDPI.fake_split(8, 4; frac_overlap = 0.0, xsz = 4)
 tfm = StitchDPI.initial_share_tfm(size(ft,2), size(rt,2))
@@ -14,9 +14,7 @@ for t = 1:size(imgtop,4)
     end
 end
 
-#ss = ss = StitchedSeries(cam1, cam2, tfm; correct_bias=true, sqrt_tfm=true);
 ss = StitchedSeries(imgtop, imgbottom, tfm; correct_bias=false, sqrt_tfm=false, flip_y_bottom=true);
-#ss = StitchedSeries(ImageMeta(AxisArray(imgtop)), ImageMeta(AxisArray(imgbottom)), tfm; correct_bias=false, sqrt_tfm=false);
 for t = 1:size(imgtop,4)
     for z = 1:size(imgtop,3)
         @test all(ss[:,1:size(imgtop,2),z,t] .== rt)
