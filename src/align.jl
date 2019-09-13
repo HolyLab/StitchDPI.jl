@@ -1,4 +1,4 @@
-#shared image alignment procedure on the microscope
+#shared image alignment procedure on the WUCCI OCPI microscope
 #1. Install KEM.  Make sure the KEM is positioned so that the image stays crisp on camera2 (may want to compare with a dichroic to make sure)
 #2. Set camera ROIs as desired (same size for both cameras)
 #3. Move camera1 up so that the KEM line corresponds with the bottom side of the ROI (larger ROIs will require moving the camera farther)
@@ -34,7 +34,7 @@ end
 function stitch(img_top_fixed::AbstractArray{T,2}, img_bottom_moving::AbstractArray{T,2}, tfm; flip_y_bottom = true, ysz_full=2048) where {T}
     yroi = size(img_top_fixed,2)
     @assert size(img_bottom_moving,2) == yroi
-    yextra = ceil(Int, abs(tfm.v[2]))
+    yextra = ceil(Int, abs(tfm.translation[2]))
     #fillvals should be NaN, but currently interpolations doesn't handle it well (imputes NaNs at gridpoints)
     img_bottom_moving_pre = ypad(img_bottom_moving, ysz_full; pad_side=:both, flip_y=flip_y_bottom, fillval=0.0)
     img_top_fixed = ypad(img_top_fixed, ysz_full; pad_side=:both, flip_y=false, fillval=0.0)
@@ -60,27 +60,27 @@ function stitch_tfm(moving_full, fixed_roi, moving_roi; trunc_frac=0.1, kwargs..
     fixed_roi_pad = ypad(fixed_roi, size(moving_full,2); flip_y = false, fillval=NaN)
     moving_roi_pad = ypad(moving_roi, size(moving_full,2); flip_y = true, fillval=NaN)
 
-    #################### Moving trip to moving full
+    #################### Moving strip to moving full
     print("Registering the moving strip to the moving full image\n")
-    mxshift_moving = [50; size(moving_roi,2)+50]
+    mxshift_moving = (50, size(moving_roi,2)+50)
     m_roi_pwr = sum(abs2.(moving_roi_pad[.!(isnan.(moving_roi_pad))]))
     moving_pre_rigid, pre_rigid_mm = qd_rigid(moving_full, moving_roi_pad, mxshift_moving, [pi/60], [pi/10000]; thresh=0.85*m_roi_pwr, kwargs...)
     @show moving_pre_rigid
 
     #refine it further, allowing full affine
-    moving_pre_tfm, pre_mm = qd_affine(moving_full, moving_roi_pad, [50;50]; thresh=0.5*m_roi_pwr, initial_tfm=moving_pre_rigid, kwargs...)
+    moving_pre_tfm, pre_mm = qd_affine(moving_full, moving_roi_pad, (50,50); thresh=0.5*m_roi_pwr, initial_tfm=moving_pre_rigid, kwargs...)
     @show moving_pre_tfm
 
-    #################### Moving trip to moving full
+    #################### Moving strip to moving full
     print("Registering the moving full image to the fixed strip\n")
-    mxshift_xcam = [50; round(Int, size(moving_roi, 2)+50)]
+    mxshift_xcam = (50, round(Int, size(moving_roi, 2)+50))
     f_roi_pwr = sum(abs2.(fixed_roi_pad[.!(isnan.(fixed_roi_pad))]))
     moving_post_rigid, post_rigid_mm = qd_rigid(fixed_roi_pad, moving_full, mxshift_xcam, [pi/60], [pi/10000]; thresh=0.5*f_roi_pwr, kwargs...)
     @show moving_post_rigid
 
     #refine it further, allowing full affine
     print("Found rigid transform, now optimizing allowing general affine transforms\n")
-    moving_post_tfm, post_mm = qd_affine(fixed_roi_pad, moving_full, [50;50]; thresh=0.5*f_roi_pwr, initial_tfm=moving_post_rigid, kwargs...)
+    moving_post_tfm, post_mm = qd_affine(fixed_roi_pad, moving_full, (50,50); thresh=0.5*f_roi_pwr, initial_tfm=moving_post_rigid, kwargs...)
     @show moving_post_tfm
 
     return recenter(moving_post_tfm ∘ moving_pre_tfm, center(moving_full)), post_mm
