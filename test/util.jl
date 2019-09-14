@@ -1,32 +1,20 @@
 using StitchDPI, Test
 
-#nanplus
-a = ones(10,10)
-b = deepcopy(a)
-a[:,1] .= NaN
-c = StitchDPI.nanplus(a,b)
-@test all(c[:,1] .== 1.0)
-@test all(c[:,2:end] .== 2.0)
-
-#crop_vals
-cr = StitchDPI.crop_vals(a, NaN)
-@test size(cr,2) == size(a,2) - 1
-@test size(cr,1) == size(a,1)
-@test all(cr.==a[:,2:end])
-a[8:end,:] .= NaN
-cr = StitchDPI.crop_vals(a, NaN)
-@test size(cr,2) == size(a,2) - 1
-@test size(cr,1) == size(a,1) - 3
-@test all(cr.==a[1:7,2:end])
-
-#ypad
-r = rand(10,10)
-rp = StitchDPI.ypad(r, 12; flip_y = false, fillval=NaN)
-@test all(isnan.(rp[:,1]))
-@test all(isnan.(rp[:,12]))
-@test all(rp[:,2:11].==r)
-
-#flipy
-rpf = StitchDPI.ypad(r, 12; flip_y = true, fillval=NaN)
-@test all(reverse(rpf[1,2:11]).==rp[1,2:11])
-@test all(reverse(rpf[10,2:11]).==rp[10,2:11])
+#fake split images with requested split
+#returns the top full/split images first, then bottom
+#ysz_roi is the size of one camera's ROI (so total combined image will have dimension 2x ysz_roi)
+function fake_split(ysz_chip, ysz_roi; frac_overlap=0.0, xsz=20)
+    @assert iseven(ysz_chip)
+    @assert iseven(ysz_roi)
+    @assert 0.0 <= frac_overlap <= 1.0
+    npix_extra = div(ysz_chip - ysz_roi, 2) #unused vertical roi  (symmetric above and below)
+    npix_overlap = ceil(Int, frac_overlap * ysz_roi) #number of pixels overlapping between shared images (zero would mean no redundant pixels)
+    chip_halfsz = div(ysz_chip,2)
+    ysz_full = 2*ysz_roi - npix_overlap + 2*npix_extra
+    full_img = rand(xsz, ysz_full)
+    full_top = full_img[:,1:ysz_chip]
+    full_bottom = full_img[:,(ysz_full-ysz_chip+1):ysz_full]
+    img_top = full_top[:,(npix_extra+1):(npix_extra+ysz_roi)]
+    img_bottom = full_bottom[:,(npix_extra+1):(npix_extra+ysz_roi)]
+    return full_top, img_top, full_bottom, img_bottom
+end

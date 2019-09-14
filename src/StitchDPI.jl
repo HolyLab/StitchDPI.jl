@@ -25,7 +25,6 @@ export stitch_tfm, stitch, mg_overlay, stitched_mg_overlay,# register_padmatched
         StitchedSeries,
         lazy_load, multiproc_write
 
-include("util.jl")
 include("preprocess.jl")
 include("align.jl")
 include("stitched_series.jl")

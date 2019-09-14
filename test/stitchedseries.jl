@@ -1,7 +1,7 @@
 using StitchDPI, Images, Test
 
-ft, rt, fb, rb = StitchDPI.fake_split(8, 4; frac_overlap = 0.0, xsz = 4)
-tfm = StitchDPI.initial_share_tfm(size(ft,2), size(rt,2))
+ft, rt, fb, rb = fake_split(8, 4; frac_overlap = 0.0, xsz = 4)
+tfm = StitchDPI.initial_guess_tfm(size(ft,2), size(rt,2))
 rt = Normed{UInt16,16}.(rt)
 rb = Normed{UInt16,16}.(rb)
 

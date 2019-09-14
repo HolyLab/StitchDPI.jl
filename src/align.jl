@@ -1,13 +1,3 @@
-#shared image alignment procedure on the WUCCI OCPI microscope
-#1. Install KEM.  Make sure the KEM is positioned so that the image stays crisp on camera2 (may want to compare with a dichroic to make sure)
-#2. Set camera ROIs as desired (same size for both cameras)
-#3. Move camera1 up so that the KEM line corresponds with the bottom side of the ROI (larger ROIs will require moving the camera farther)
-#4. Move camera2 left so that the KEM line corresponds with the bottom side of the ROI
-#5. Note the ROI settings and change the ROI to full chip
-#6. Install 50/50 dichroic instead of KEM
-#7. Take a snapshot of beads with camera2
-#8. Reset ROIs as noted in #5, replace KEM mirror, and take a snapshot with each camera.  Make sure the beads don't move during this sequence!
-
 #shared image alignment computational procedure
 #1.  Compute transform to align camera2's flipped padded half-image (step 8) with its flipped full image (step 7) (should be almost aligned already)
 #2.  Compute transform to align camera2's flipped full image (step 7) with camera1's padded half-image (step 8)
@@ -86,9 +76,6 @@ function stitch_tfm(moving_full, fixed_roi, moving_roi; trunc_frac=0.1, kwargs..
     return recenter(moving_post_tfm ∘ moving_pre_tfm, center(moving_full)), post_mm
 end
 
-trunc_above(v::T,thr) where {T} = ifelse(v<thr || isnan(v), v, T(thr))
-
-nanz(x) = ifelse(isnan(x), zero(x), x)
 #green and magenta overlay
 mg_overlay(img1, img2) = colorview(RGB, nanz.(img1), nanz.(img2), nanz.(img1))
 #green and magenta overlay, one color per half-image
@@ -102,7 +89,8 @@ end
 #By convention, we align images to camera1, which has the top portion of the split image on OCPI2
 #This returns an initial guess translation mapping camera 2's image to camera1's image after camera2's image has been flipped (flip required on OCPI2)
 #ysz_roi is the pixel size of the image in the vertical direction (the dimension that gets split between cameras)
-function initial_share_tfm(ysz_chip::Int, ysz_roi::Int)
+#Note: currently not using this
+function initial_guess_tfm(ysz_chip::Int, ysz_roi::Int)
     @assert iseven(ysz_chip)
     @assert iseven(ysz_roi)
     if ysz_roi > ysz_chip
@@ -110,11 +98,11 @@ function initial_share_tfm(ysz_chip::Int, ysz_roi::Int)
     end
     return Translation(0, -ysz_roi)
 end
-#
+
 #Makes an initial guess based on stripsz
 #function full2full(fixed, moving, stripsz::Int, mxshift, mxrot, rotstep; thresh = 0.1*sum(abs2.(moving[.!(isnan.(moving))])), tfm0 = IdentityTransformation(), kwargs...)
 #    @assert size(fixed) == size(moving)
-#    @show tfm_guess = initial_share_tfm(size(fixed,2), stripsz) ∘ tfm0
+#    @show tfm_guess = initial_guess_tfm(size(fixed,2), stripsz) ∘ tfm0
 #    #tfm, mm = register_padmatched(fixed, moving, mxshift, mxrot, rotstep; thresh=thresh, tfm0=tfm_guess, kwargs...)
 #    tfm, mm = register_padmatched(fixed, moving, mxshift, mxrot, rotstep; thresh=thresh, kwargs...)
 #end
