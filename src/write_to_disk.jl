@@ -6,7 +6,6 @@
 #This function is useful when retrieving a stack from img takes a lot of time due to lazy computation
 function multiproc_write(fname::AbstractString, img::AbstractArray{T}, out_type=T) where {T}
     mmapa = prep_nrrd_write(fname, img, out_type)
-    #pp = out_type == T ? x->x : x->out_type.(x)
     multiproc_write!(mmapa, img)
 end
 
@@ -40,7 +39,6 @@ function multiproc_write!(mmapA::AbstractArray{T,4}, img::AbstractArray{T2,4}) w
     end
     print("Defining image and output array on other processes...\n")
     if np > 1
-        #@eval @everywhere mmapA = $(mmapA)
         @eval @everywhere img = $(img)
     end
     #nthreads = Base.Threads.nthreads()
