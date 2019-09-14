@@ -28,19 +28,7 @@ end
 flipy(img::AbstractArray{T,2}) where {T} = view(img, :, reverse(last(axes(img))))
 
 #Crops the image to the minimal rectangle without val along any edge
-function crop_vals(img::AbstractArray{T,2}, val, dims::Tuple=(1,2)) where {T}  
-    if dims == (1,)
-        return crop_vals_x(img, val)
-    elseif dims == (2,)
-        return crop_vals_y(img, val)
-    elseif dims == (1,2)
-        return crop_vals_xy(img, val)
-    else
-        error("Unrecognized dims Tuple")
-    end
-end
-
-function crop_vals_xy(img::AbstractArray{T,2}, val) where {T}
+function crop_vals(img::AbstractArray{T,2}, val) where {T}
     xmax = ymax = 1
     xmin = size(img,1)
     ymin = size(img,2)
@@ -58,76 +46,6 @@ function crop_vals_xy(img::AbstractArray{T,2}, val) where {T}
         error("All elements of image seem to be $val")
     end
     return view(img, xmin:xmax, ymin:ymax)
-end
-
-function crop_vals_x(img::AbstractArray{T,2}, val) where {T}
-    xmax = 1
-    xmin = size(img,1)
-    min_found = false
-    max_found = false
-    for x = 1:size(img,1)
-        for y = 1:size(img,2)
-            if !isequal(img[x,y], val)
-                xmin = x
-                min_found = true
-                break
-            end
-        end
-        if min_found
-            break
-        end
-    end
-    for x = size(img,1):-1:1
-        for y = 1:size(img,2)
-            if !isequal(img[x,y], val)
-                xmax = x
-                max_found = true
-                break
-            end
-        end
-        if max_found
-            break
-        end
-    end
-    if xmax < xmin
-        error("All elements of image seem to be $val")
-    end
-    return view(img, xmin:xmax, :)
-end
-
-function crop_vals_y(img::AbstractArray{T,2}, val) where {T}
-    ymax = 1
-    ymin = size(img,2)
-    min_found = false
-    max_found = false
-    for y = 1:size(img,2)
-        for x = 1:size(img,1)
-            if !isequal(img[x,y], val)
-                ymin = y
-                min_found = true
-                break
-            end
-        end
-        if min_found
-            break
-        end
-    end
-    for y = size(img,2):-1:1
-        for x = 1:size(img,1)
-            if !isequal(img[x,y], val)
-                ymax = y
-                max_found = true
-                break
-            end
-        end
-        if min_found
-            break
-        end
-    end
-    if ymax < ymin
-        error("All elements of image seem to be $val")
-    end
-    return view(img, :, ymin:ymax)
 end
 
 function nanplus!(prealloc, img1, img2)
