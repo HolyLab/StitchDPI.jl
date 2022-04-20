@@ -22,6 +22,7 @@ Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 ZWarpedArrays = "26d16474-33ca-11e9-0261-c59b979c6e18"
 
 [compat]
+FileIO = "1"
 julia = "1"
 
 [extras]
