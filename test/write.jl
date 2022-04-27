@@ -1,4 +1,4 @@
-using StitchDPI, Images, Test
+using StitchDPI, ImageBase, FileIO, Test
 
 img = rand(3,3,3,4)
 multiproc_write("test.nhdr", img, Float32)

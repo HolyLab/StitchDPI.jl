@@ -1,4 +1,4 @@
-using StitchDPI, Images, Test
+using StitchDPI, ImageBase, Test
 
 ft, rt, fb, rb = fake_split(8, 4; frac_overlap = 0.0, xsz = 4)
 tfm = StitchDPI.initial_guess_tfm(size(ft,2), size(rt,2))

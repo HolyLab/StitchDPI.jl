@@ -1,6 +1,6 @@
 module StitchDPI
 
-using CoordinateTransformations, Interpolations, PaddedViews, Unitful, AxisArrays, Images, MappedArrays
+using CoordinateTransformations, Interpolations, PaddedViews, Unitful, AxisArrays, ImageMetadata, ImageBase, MappedArrays
 const axes = Base.axes #for name conflict with AxisArrays
 
 const Tform = CoordinateTransformations.Transformation
@@ -21,7 +21,7 @@ import CachedArrays: AbstractCachedArray,
                         axisspacing,
                         match_axisspacing
 
-export stitch_tfm, stitch, mg_overlay, stitched_mg_overlay,# register_padmatched, full2full, 
+export stitch_tfm, stitch, mg_overlay, stitched_mg_overlay,# register_padmatched, full2full,
         StitchedSeries,
         lazy_load, multiproc_write
 
